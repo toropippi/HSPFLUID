@@ -1,0 +1,140 @@
+#include "HSPFLUID64.as"
+#include "hsp3util.as"
+	buffer 1:picload "back01.png"
+
+	wx=10
+	wy=10
+	scale=40
+	
+	ddim vx,wx,wy//x速度
+	ddim vy,wx,wy//y速度
+	ddim p,wx,wy//圧力
+	dim wall,wx,wy//そこが壁かどうか
+
+	pnum=1500//粒子の数
+	ddim particle_x,pnum//粒子の座標
+	ddim particle_y,pnum//粒子の座標
+	ddim speed_x,pnum//粒子の速度
+	ddim speed_y,pnum//粒子の速度
+	
+	screen 0,wx*scale,wy*scale
+	timer=0
+	font msgothic,30
+
+*main
+	pos 0,0
+	gmode 3,0,0,130
+	gcopy 1,0,0,wx*scale,wy*scale
+	
+	FluidProcess vx,vy,p,wall//流体計算
+
+	gsel 1
+		repeat wx
+		xcnt=cnt
+			repeat wy
+			rcol=limit(p.xcnt.cnt*4256.0,0,255)
+			gcol=limit(-p.xcnt.cnt*4256.0,0,255)
+			color 255-rcol,255-gcol,255
+			boxf xcnt*scale+2,cnt*scale+2,xcnt*scale+scale-4,cnt*scale+scale-4
+			loop
+		loop
+	gsel 0
+
+	GetSpeedPoints vx,vy,particle_x,particle_y,speed_x,speed_y//粒子の速度計算
+
+	color 0,0,0
+	gosub*Particle_set
+		repeat pnum
+		particle_x.cnt+=speed_x.cnt
+		particle_y.cnt+=speed_y.cnt
+		if (particle_x.cnt<0):particle_x.cnt+=wx
+		if (particle_y.cnt<0):particle_y.cnt+=wy
+		if (particle_x.cnt>1.0*wx):particle_x.cnt-=wx
+		if (particle_y.cnt>1.0*wy):particle_y.cnt-=wy
+		pset particle_x.cnt*scale,particle_y.cnt*scale
+		loop
+
+	gosub*demo
+	
+	redraw 1
+	redraw 0
+	await 16
+	timer++
+	goto*main
+
+
+*Particle_set//順繰りに初期化
+		repeat 4
+		index=(index+1)\pnum
+		particle_x.index=0.0001*rnd(20000)*wx
+		particle_y.index=0.0001*rnd(20000)*wy
+		loop
+	return
+
+
+*demo
+	color 255,255,255
+	grect wx*scale/2,wy*scale/2,0,wx*scale,wy*scale
+	title ""+timer+""
+	color 0,0,0
+	textmode 2
+	color 5,255,135
+	eventid=timer/100
+
+	if (eventid<4){
+		pos 20,20
+		emes "流体の速度には制限が\nあります。"
+		return
+	}
+
+	
+	if (eventid<17){
+		pos 5+scale*2,4+scale
+		emes "圧力を色で表示"
+		emes "vx.2.4 = "+(0.0035*(timer-400))+"
+		emes "vx.8.5 = "+(-0.0035*(timer-400))+"
+		setlineX 2,4
+		vx.2.4 = 0.0035*(timer-400)
+		setlineX 8,5
+		vx.8.5 = -0.0035*(timer-400)
+		return
+	}
+	
+	if (eventid<22){
+		pos 20,20
+		emes "このように速度が±1.0\nを超えると計算が不安定\nになります。"
+		return
+	}
+	
+	if (eventid<27){
+		pos 20,20
+		emes "本来は計算が不安定に\nなった瞬間'発散'して\n計算が破綻します。"
+		return
+	}
+
+	
+	if (eventid<36){
+		pos 4,20
+		emes "このプラグインでは速度制限\nをかけているので見た目は\n破綻しないですが\n正確な計算はできなく\nなります。"
+		return
+	}
+
+
+	if eventid=40:end
+	
+	return
+
+
+#module
+
+#deffunc setlineX int x,int y
+	color 250/2,150/2,110/2
+	boxf x*scale@-5,y*scale@,x*scale@+5,y*scale@+scale@
+	return
+	
+#deffunc setlineY int x,int y
+	color 110/2,110/2,250/2
+	boxf x*scale@,y*scale@-5,x*scale@+scale@,y*scale@+5
+	return
+
+#global

@@ -1,0 +1,235 @@
+#include "HSPFLUID64.as"
+#include "hsp3util.as"
+	buffer 1:picload "back01.png"
+
+	wx=10
+	wy=10
+	scale=40
+	
+	ddim vx,wx,wy//x速度
+	ddim vy,wx,wy//y速度
+	ddim p,wx,wy//圧力
+	dim wall,wx,wy//そこが壁かどうか
+	
+	screen 0,wx*scale,wy*scale
+	timer=0
+	font msgothic,30
+
+*main
+	pos 0,0
+	gmode 3,0,0,130
+	gcopy 1,0,0,wx*scale,wy*scale
+	
+	FluidProcess vx,vy,p,wall//流体計算
+
+	gosub*demo
+	
+	redraw 1
+	redraw 0
+	await 16
+	timer++
+	goto*main
+
+*demo
+	color 255,255,255
+	grect wx*scale/2,wy*scale/2,0,wx*scale,wy*scale
+	title ""+timer+""
+	color 0,0,0
+	textmode 2
+	color 5,255,135
+	eventid=timer/100
+
+	if (eventid<4){
+		pos 20,20
+		emes "はじめに'FluidProcess'の\n命令の説明をします。\n\nこれは流れの1ステップを\n計算する命令です。"
+		return
+	}
+	
+	if (eventid<8){
+		pos 10,10
+		emes "FluidProcess vx,vy,p,wall\nという使い方をします。\n\n計算前のvx,vy,p,wall\nから次ステップのvx,vy,pを\n計算します。"
+		return
+	}
+
+	if (eventid<10){
+		pos 20,20
+		emes "vxはx方向の速度成分\nvyはy方向の速度成分\npは圧力\nwallは壁情報"
+		return
+	}
+
+	if (timer<1400){
+		pos 10,10
+		emes "   'vx'    \n各場所のx方向の\n速度をもつ変数\nこの場合10*10の二次元配列"
+		id=(timer-1000)/4
+		setlineX id\10,id/10
+		return
+	}
+	
+	
+	if (timer<1800){
+		pos 10,10
+		emes "つぎに'vy'    \n各場所のy方向の\n速度をもつ変数\nこの場合10*10の二次元配列"
+		id=(timer-1400)/4
+		setlineY id\10,id/10
+		return
+	}
+	
+	if (timer<2200){
+		pos 10,10
+		emes "つぎに'p'    \n各場所の圧力値をもつ変数\nこの場合10*10の二次元配列"
+		id=(timer-1800)/4
+		SetBox id\10,id/10
+		id0=(id-1+100)\100
+		UnSetBox id0\10,id0/10
+		return
+	}
+	
+	if (timer<2600){
+		pos 10,10
+		emes "つぎに'wall'    \n各場所が流体か壁か\nを判断する変数。\nこの場合10*10の二次元配列"
+		id=(timer-2200)/4
+		SetBox id\10,id/10
+		id0=(id-1+100)\100
+		UnSetBox id0\10,id0/10
+		return
+	}
+
+	
+	if (eventid<30){
+		pos 5,4
+		emes "←ここの茶色の辺は\n  vx.0.0に相当\n\nこの'辺'の部分がx方向速度\nをもつと考えます。"
+		setlineX 0,0
+		if (timer==2600):UnSetBox 9,9
+		return
+	}
+	
+	if (eventid<34){
+		pos 5,4+scale
+		emes "←ここの茶色の辺は\n  vx.0.1に相当"
+		setlineX 0,1
+		return
+	}
+	
+	if (eventid<37){
+		pos 5,4+scale*2
+		emes "←ここの茶色の辺は\n  vx.0.2に相当"
+		setlineX 0,2
+		return
+	}
+
+	if (eventid<40){
+		pos 5+scale,4+scale*2
+		emes "←ここの茶色の辺は\n  vx.1.2に相当\n  といった具合です。"
+		setlineX 1,2
+		return
+	}
+
+	if (eventid<43){
+		pos 5,4
+		emes "↑ここの青の辺は\nvy.0.0に相当"
+		setlineY 0,0
+		return
+	}
+	
+	if (eventid<45){
+		pos 5+scale,4+scale
+		emes "↑ここの青の辺は\nvy.1.1に相当"
+		setlineY 1,1
+		return
+	}
+	
+	if (eventid<47){
+		pos 5+scale*2,4+scale*3
+		emes "↑ここの青の辺は\nvy.2.3に相当"
+		setlineY 2,3
+		return
+	}
+
+	if (eventid<51){
+		pos 5+(wx-1)*scale,4+(wy-1)*scale
+		emes "↓"
+
+		pos 5,4+(wy-3)*scale
+		emes "ここのy速度は存在しないで\nすが上と下は繋がってい\nるので"
+		setlineY 9,10
+		return
+	}
+	
+	if (eventid<55){
+		pos 5+(wx-1)*scale,4
+		emes "↑"
+		pos 5,4
+		emes "さっきの場所はここへ\n繋がっています。"
+		setlineY 9,0
+		return
+	}
+
+
+	if (eventid<57){
+		pos 5+(wx-1)*scale,4
+		emes "→"
+		pos 5,4+scale
+		emes "      同じようにここは"
+		setlineX 10,0
+		return
+	}
+	
+	if (eventid<59){
+		pos 5,4
+		emes "←"
+		pos 5,4+scale
+		emes "ここに繋がっています。"
+		setlineX 0,0
+		return
+	}
+
+	if (eventid<64){
+		pos 3,10
+		emes "速度と圧力や壁の定義点が\nずれていることに\n注意して下さい。\n\nこのように定義された空間を\nスタッガード格子と言います"
+		return
+	}
+	
+	if (eventid<70){
+		pos 10,10+scale*3
+		emes "例：p.1.1の領域は\nvx.1.1とvx.2.1\nvy.1.1とvy.1.2\nに囲まれている"
+
+		SetBox 1,1
+		setlineX 1,1
+		setlineX 2,1
+		setlineY 1,1
+		setlineY 1,2
+		return
+	}
+	
+	if eventid=70:end
+	
+	return
+
+
+#module
+
+#deffunc setlineX int x,int y
+	color 250/2,150/2,110/2
+	boxf x*scale@-5,y*scale@,x*scale@+5,y*scale@+scale@
+	return
+	
+#deffunc setlineY int x,int y
+	color 110/2,110/2,250/2
+	boxf x*scale@,y*scale@-5,x*scale@+scale@,y*scale@+5
+	return
+	
+#deffunc SetBox int x,int y
+	gsel 1
+	color 0,0,0
+	boxf x*scale@+2,y*scale@+2,x*scale@+scale@-3,y*scale@+scale@-3
+	gsel 0
+	return
+
+#deffunc UnSetBox int x,int y
+	gsel 1
+	color 255,255,255
+	boxf x*scale@+2,y*scale@+2,x*scale@+scale@-3,y*scale@+scale@-3
+	gsel 0
+	return
+	
+#global

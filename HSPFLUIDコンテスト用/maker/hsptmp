@@ -1,0 +1,29 @@
+
+	xoffset=0
+	yoffset=0
+	
+	wx=50
+	wy=22
+	scale=20
+
+	
+	screen 0,wx*scale+xoffset*2,wy*scale+yoffset*2
+
+	color 110,110,250
+	repeat wx
+	xcnt=cnt
+		repeat wy
+		boxf xoffset+xcnt*scale+2,yoffset+cnt*scale-2,xoffset+xcnt*scale+scale-2,yoffset+cnt*scale+2
+		loop
+	loop
+
+	
+	color 250,150,110
+	repeat wx
+	xcnt=cnt
+		repeat wy
+		boxf xoffset+xcnt*scale-2,yoffset+cnt*scale+2,xoffset+xcnt*scale+2,yoffset+cnt*scale+scale-2
+		loop
+	loop
+
+	bmpsave "back04.bmp"

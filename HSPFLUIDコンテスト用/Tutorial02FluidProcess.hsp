@@ -1,0 +1,243 @@
+#include "HSPFLUID64.as"
+#include "hsp3util.as"
+	buffer 1:picload "back01.png"
+
+	wx=10
+	wy=10
+	scale=40
+	
+	ddim vx,wx,wy//x速度
+	ddim vy,wx,wy//y速度
+	ddim p,wx,wy//圧力
+	dim wall,wx,wy//そこが壁かどうか
+
+	pnum=1500//粒子の数
+	ddim particle_x,pnum//粒子の座標
+	ddim particle_y,pnum//粒子の座標
+	ddim speed_x,pnum//粒子の速度
+	ddim speed_y,pnum//粒子の速度
+	repeat pnum/4:gosub*Particle_Init:loop
+	
+	screen 0,wx*scale,wy*scale
+	timer=0
+	font msgothic,30
+
+*main
+	pos 0,0
+	gmode 3,0,0,130
+	gcopy 1,0,0,wx*scale,wy*scale
+	
+	gosub*view
+	gosub*demo
+	
+	redraw 1
+	redraw 0
+	await 16
+	timer++
+	goto*main
+
+*view
+	color 0,0,0
+		repeat pnum//描画
+		pset particle_x.cnt*scale,particle_y.cnt*scale
+		loop
+	return
+
+*Particle_Init
+	//順繰りに初期化
+		repeat 4
+		index=(index+1)\pnum
+		particle_x.index=5.0
+		particle_y.index=0.0001*rnd(20000)+4.5
+		loop
+	return
+
+*Particle_Calc
+	gosub*Particle_Init
+	GetSpeedPoints vx,vy,particle_x,particle_y,speed_x,speed_y//粒子の速度計算
+		repeat pnum
+		particle_x.cnt+=speed_x.cnt
+		particle_y.cnt+=speed_y.cnt
+		if (particle_x.cnt<0):particle_x.cnt+=wx
+		if (particle_y.cnt<0):particle_y.cnt+=wy
+		if (particle_x.cnt>1.0*wx):particle_x.cnt-=wx
+		if (particle_y.cnt>1.0*wy):particle_y.cnt-=wy
+		loop
+		
+	return
+
+
+*demo
+	color 255,255,255
+	grect wx*scale/2,wy*scale/2,0,wx*scale,wy*scale
+	title ""+timer+""
+	color 0,0,0
+	textmode 2
+	color 5,255,135
+	eventid=timer/100
+
+	if (eventid<4){
+		pos 20,20
+		emes "'FluidProcess'命令で\n流体計算をしていきます。"
+		return
+	}
+	
+	if (eventid<8){
+		pos 20,20
+		emes "  vx.5.5 = 0.5\nとして速度を代入します。\n\n\n\n\n\n\n\n　　　　　 ↑\nまた可視化のため黒い\nドットを配置しています。"
+		vx.5.5 = 0.5
+		setlineX 5,5
+		return
+	}
+
+	if (eventid<12){
+		pos 20,20
+		emes "FluidProcessを1回実行\n粒子座標更新も1回実行し"
+		if (timer==810){
+			FluidProcess vx,vy,p,wall//流体計算1回
+			gosub*Particle_Calc//粒子速度計算して座標更新
+		}
+		return
+	}
+	
+	if (eventid<16){
+		pos 5,4+scale*2
+		emes "黒いドット群が流されて\n少し動いたのがわかります。\n　　　　　　↓"
+		return
+	}
+
+	if (eventid<19){
+		pos 1,4+scale
+		emes "もう数10フレーム動かして\nみます"
+		if (timer>=1750)&(timer<1780){
+			FluidProcess vx,vy,p,wall//流体計算1回
+			gosub*Particle_Calc//粒子速度計算して座標更新
+		}
+		return
+	}
+
+
+	if (eventid<21){
+		pos 5,4
+		emes "ここで各変数の中身を\n見てみます。"
+		return
+	}
+
+	
+	if (eventid<25){
+		pos 5,4
+		id=(timer-2100)/4
+		xx=id\10
+		yy=id/10
+		emes "vx."+xx+"."+yy+" = "+vx.xx.yy+""
+		setlineX xx,yy
+		return
+	}
+
+	if (eventid<29){
+		pos 5,4
+		id=(timer-2500)/4
+		xx=id\10
+		yy=id/10
+		emes "vy."+xx+"."+yy+" = "+vy.xx.yy+""
+		setlineY xx,yy
+		return
+	}
+	
+	if (eventid<33){
+		pos 5,4
+		id=(timer-2900)/4
+		xx=id\10
+		yy=id/10
+		emes "p."+xx+"."+yy+" = "+p.xx.yy+""
+		SetBox xx,yy
+
+		id--
+		xx=id\10
+		yy=id/10
+		UnSetBox xx,yy
+		return
+	}
+
+	if (eventid<37){
+		if timer==3300:UnSetBox 9,9
+		pos 5,4
+		emes "このように最初の流速が\n全体に波及しているのが\nわかります。"
+		return
+	}
+
+	if (eventid<41){
+		pos 5,4
+		emes "'FluidProcess'命令は\n現在の速度,圧力値から\n次の速度,圧力値を計算しま\nす。"
+		return
+	}
+	
+	if (eventid<44){
+		pos 5,4
+		emes "最初に0.5を代入したvx.5.5\nは現在"+vx.5.5+"になってい\nます。"
+		setlineX 5,5
+		return
+	}
+	
+	if (eventid<48){
+		pos 5,4
+		emes "これは流れによって\n流速が随時変わっていった\n結果です。"
+		setlineX 5,5
+		return
+	}
+
+	
+	
+	if (eventid<51){
+		pos 20,20
+		emes "今度は毎フレーム値を代入\nして動かしてみましょう。"
+		return
+	}
+	
+	if (eventid<70){
+		pos 5+scale*2,4+scale*3
+		if (eventid/2\2==0){
+			emes "vx.5.5 = 0.1"
+			vx.5.5 = 0.1
+		}else{
+			emes "vx.5.5 = -0.1"
+			vx.5.5 = -0.1
+		}
+		setlineX 5,5
+		FluidProcess vx,vy,p,wall//流体計算1回
+		gosub*Particle_Calc//粒子速度計算して座標更新
+		return
+	}
+
+	if eventid=70:end
+	
+	return
+
+
+#module
+
+#deffunc setlineX int x,int y
+	color 250/2,150/2,110/2
+	boxf x*scale@-5,y*scale@,x*scale@+5,y*scale@+scale@
+	return
+	
+#deffunc setlineY int x,int y
+	color 110/2,110/2,250/2
+	boxf x*scale@,y*scale@-5,x*scale@+scale@,y*scale@+5
+	return
+
+#deffunc SetBox int x,int y
+	gsel 1
+	color 0,0,0
+	boxf x*scale@+2,y*scale@+2,x*scale@+scale@-3,y*scale@+scale@-3
+	gsel 0
+	return
+
+#deffunc UnSetBox int x,int y
+	gsel 1
+	color 255,255,255
+	boxf x*scale@+2,y*scale@+2,x*scale@+scale@-3,y*scale@+scale@-3
+	gsel 0
+	return
+	
+#global

@@ -1,0 +1,83 @@
+#include "HSPFLUID64.as"
+	wx=128
+	wy=40
+	scale=8
+	
+	pnum=500
+	ddim vx,wx,wy
+	ddim vy,wx,wy
+	ddim p,wx,wy
+	dim wall,wx,wy
+
+	ddim particle_x,pnum
+	ddim particle_y,pnum
+	ddim speed_x,pnum
+	ddim speed_y,pnum
+
+	//壁設定
+		repeat wy
+		wall.(wx-1).cnt=2//右側は吸収
+		wall.0.cnt=1//左側は速度固定
+		vx.1.cnt=0.6//左側は速度固定
+		loop
+
+
+	//左側の障害物1
+	wall.6.17=1
+	wall.6.18=1
+	wall.6.19=1
+	wall.6.20=1
+	wall.6.21=1
+
+	//左側の障害物2
+	wall.11.3=1
+	wall.11.4=1
+
+	SetPoissonsLoopNum 9998//最初は誤差が多いのでポアソン方程式の反復回数を多くして収束させておく
+	screen 0,wx*scale,wy*scale
+	
+		repeat -1
+		await 16
+		if cnt==2:SetPoissonsLoopNum 8//最初は誤差が多いのでポアソン方程式の反復回数を多くして収束させておく
+		FluidProcess vx,vy,p,wall
+		
+			repeat wx
+			x=cnt
+			x1=(x+1)\wx
+				repeat wy
+				y=cnt
+				y1=(y+1)\wy
+				vor=-vx.x1.y1+vy.x1.y1+vx.x1.y -vy.x .y1//渦度
+				rcol=limit(vor*2256.0,0,255)
+				gcol=limit(-vor*2256.0,0,255)
+				bcol=limit(abs(vor)*1456.0-40.0,0,255)
+				color rcol,gcol,bcol
+				boxf x*scale,y*scale,x*scale+scale,y*scale+scale
+				loop
+			loop
+
+		GetSpeedPoints vx,vy,particle_x,particle_y,speed_x,speed_y
+		gosub*Particle_set
+		
+		color 255,0,255
+			repeat pnum
+			particle_x.cnt+=speed_x.cnt
+			particle_y.cnt+=speed_y.cnt
+			xx=int(particle_x.cnt*scale)
+			yy=int(particle_y.cnt*scale)
+			circle xx-5,yy-5,xx+5,yy+5
+			loop		
+		
+		redraw 1
+		redraw 0
+		loop
+	
+
+*Particle_set//順繰りに初期化
+		repeat 3
+		index=(index+1)\pnum
+		particle_x.index=0.0001*rnd(10000)+1.0
+		particle_y.index=0.0001*rnd(10000)*wy
+		loop
+	return
+	

@@ -1,0 +1,306 @@
+//流体計算
+//壁ありバージョン
+#include "HSPFLUID64.as"
+#include "hsp3util.as"
+	buffer 1:picload "back01.png"
+
+	wx = 10
+	wy = 10
+	scale = 40
+	wallposx = 4.5
+	
+	ddim vx,wx,wy//x速度
+	ddim vy,wx,wy//y速度
+	ddim p,wx,wy//圧力
+	dim wall,wx,wy//そこが壁かどうか
+
+	pnum = 1100//粒子の数
+	ddim particle_x,pnum//粒子の座標
+	ddim particle_y,pnum//粒子の座標
+	ddim speed_x,pnum//粒子の速度
+	ddim speed_y,pnum//粒子の速度
+	
+	screen 0,wx*scale,wy*scale
+	timer = 0
+	font msgothic,30
+
+
+*main
+	pos 0,0
+	gmode 3,0,0,40+(timer>4200)*80
+	gcopy 1,0,0,wx*scale,wy*scale
+
+	if (timer>800)&(timer<2600){
+		vx.2.4 = cos(0.02*timer+1.57)*0.4//速度つける
+		vx.2.5 = cos(0.02*timer+1.57)*0.4//速度つける
+		vx.2.6 = cos(0.02*timer+1.57)*0.4//速度つける
+	}
+	
+	FluidProcess vx,vy,p,wall//流体計算
+	GetSpeedPoints vx,vy,particle_x,particle_y,speed_x,speed_y//粒子の速度計算
+
+	color 0,0,0
+	gosub*Particle_set
+		repeat pnum
+		particle_x.cnt+=speed_x.cnt
+		particle_y.cnt+=speed_y.cnt
+		if (particle_x.cnt<0):particle_x.cnt+=wx
+		if (particle_y.cnt<0):particle_y.cnt+=wy
+		if (particle_x.cnt>1.0*wx):particle_x.cnt-=wx
+		if (particle_y.cnt>1.0*wy):particle_y.cnt-=wy
+		pset particle_x.cnt*scale,particle_y.cnt*scale
+		loop
+
+	gosub*demo
+	
+	redraw 1
+	redraw 0
+	await 16
+	timer++
+	goto*main
+
+
+*Particle_set//順繰りに初期化
+	if (timer<4200){
+		repeat 5
+		index=(index+1)\pnum
+		particle_x.index=0.0001*rnd(20000)+1.0
+		particle_y.index=0.0001*rnd(20000)*wy
+		loop
+	}else{
+		repeat 5
+		index=(index+1)\pnum
+		particle_x.index=0.0001*rnd(20000)*wx
+		particle_y.index=0.0001*rnd(20000)*wy
+		loop
+	}
+	return
+
+
+
+
+
+
+
+*demo
+	color 255,255,255
+	grect wx*scale/2,wy*scale/2,0,wx*scale,wy*scale
+	color 0,0,0
+	textmode 2
+	color 5,255,135
+	eventid=timer/100
+	title ""+timer+""
+
+	if (eventid<4){
+		pos 10,10
+		emes "壁(障害物)をセット\nすることもできます。"
+		return
+	}
+	
+	if (eventid<8){
+		pos 20,20
+		emes "ソースコード側で wall\nという変数があります。\n\nこれをいじることで\n壁を定義します。"
+		return
+	}
+	
+	if (eventid<14){
+		pos 5+scale,20
+		emes "wall.6.5 = 1"
+		emes "wall.6.6 = 1"
+		emes "wall.6.7 = 1"
+		emes "※ 0なら流体  1なら壁"
+		SetBox 6,5
+		wall.6.5 = 1
+		SetBox 6,6
+		wall.6.6 = 1
+		SetBox 6,7
+		wall.6.7 = 1
+		return
+	}
+
+	
+	if (eventid<18){
+		pos 5,10
+		emes "流体のあるところは速度が\n絶えず変わっていますが\n壁に接する辺の速度は\n計算によって変わりません。"
+		setlineX 6,5
+		setlineX 7,5
+		setlineX 6,6
+		setlineX 7,6
+		setlineX 6,7
+		setlineX 7,7
+		
+		setlineY 6,5
+		setlineY 6,6
+		setlineY 6,7
+		setlineY 6,8
+		return
+	}
+
+	
+	if (eventid<23){
+		pos 9,10
+		emes "今回の場合壁の辺の速度は"
+		emes "vx.6.5 = 0.0\nvx.6.6 = 0.0\nvx.6.7 = 0.0\nvx.7.5 = 0.0\nvx.7.6 = 0.0\nvx.7.7 = 0.0"
+		emes "vy.6.5 = 0.0\nvy.6.6 = 0.0\nvy.6.7 = 0.0\nvy.6.8 = 0.0\nになりますが"
+		setlineX 6,5
+		setlineX 7,5
+		setlineX 6,6
+		setlineX 7,6
+		setlineX 6,7
+		setlineX 7,7
+		
+		setlineY 6,5
+		setlineY 6,6
+		setlineY 6,7
+		setlineY 6,8
+		return
+	}
+
+	if (eventid<26){
+		pos 9,10
+		emes "壁の各辺に速度をつける\nことができます。"
+		setlineX 6,5
+		setlineX 7,5
+		setlineX 6,6
+		setlineX 7,6
+		setlineX 6,7
+		setlineX 7,7
+		
+		setlineY 6,5
+		setlineY 6,6
+		setlineY 6,7
+		setlineY 6,8
+		return
+	}
+	
+	if (eventid<39){
+		pos 5+scale*2,4
+		emes "vx.6.5 = -0.3\nvx.6.6 = -0.3\nvx.6.7 = 0.3\nvx.7.5 = -0.3\nvx.7.6 = -0.3\nvx.7.7 = 0.3"
+		vx.6.5=-0.3
+		vx.6.6=-0.3
+		vx.6.7=0.3
+		vx.7.5=-0.3
+		vx.7.6=-0.3
+		vx.7.7=0.3
+		
+		if (eventid>30){
+			pos 5,4+scale*8
+			emes "　　　　　　　　↑"
+			emes "壁の中に速度がある状況"
+		}
+		
+		setlineX 6,5
+		setlineX 7,5
+		setlineX 6,6
+		setlineX 7,6
+		setlineX 6,7
+		setlineX 7,7
+		
+		setlineY 6,5
+		setlineY 6,6
+		setlineY 6,7
+		setlineY 6,8
+
+		return
+	}
+
+
+
+	if (eventid<42){
+		pos 11,4+scale
+		emes "これを応用することで\n'動く壁'\nが作れます！"
+		return
+	}
+
+	if (eventid=42){
+		UnSetBox 6,5
+		UnSetBox 6,6
+		UnSetBox 6,7
+		wall.6.5=0
+		wall.6.6=0
+		wall.6.7=0
+	}
+
+	if (eventid<60){
+		pos 5,4
+		
+		wall.lx.4=0//1frame前の削除
+		wall.lx.5=0
+		UnSetBox lx,4
+		UnSetBox lx,5
+		
+		spd=sin(0.06*timer)*0.1
+		wallposx+=spd//中心x
+		
+		lx=int(wallposx-0.5)
+		rx=int(wallposx+0.5)
+		
+		wall.lx.4=1
+		wall.lx.5=1
+		SetBox lx,4
+		SetBox lx,5
+		
+		vx.lx.4=spd
+		vx.lx.5=spd
+		vx.rx.4=spd
+		vx.rx.5=spd
+
+		if (eventid<51){
+			emes "wall."+lx+".4 = 1"
+			emes "wall."+lx+".5 = 1"
+			sspd=strf("%1.3f",spd)
+	
+			emes "vx."+lx+".4 = "+sspd+""
+			emes "vx."+lx+".5 = "+sspd+""
+			emes "vx."+rx+".4 = "+sspd+""
+			emes "vx."+rx+".5 = "+sspd+""
+		}
+
+		if (eventid>53){
+			emes "壁が動いた後\nwall.6.4 = 0のように\n壁から流体に戻すのを忘れ\nないようにして下さい。\n　　　　　　　  ↓"
+		}
+		
+		
+		setlineX lx,4
+		setlineX lx,5
+		setlineX rx,4
+		setlineX rx,5
+		
+		setlineY lx,4
+		setlineY lx,5
+		setlineY lx,6
+		return
+	}
+
+	if eventid=60:end
+	return
+
+
+#module
+
+#deffunc setlineX int x,int y
+	color 250/2,150/2,110/2
+	boxf x*scale@-5,y*scale@,x*scale@+5,y*scale@+scale@
+	return
+
+#deffunc setlineY int x,int y
+	color 110/2,110/2,250/2
+	boxf x*scale@,y*scale@-5,x*scale@+scale@,y*scale@+5
+	return
+
+
+#deffunc SetBox int x,int y
+	gsel 1
+	color 100,100,100
+	boxf x*scale@+2,y*scale@+2,x*scale@+scale@-3,y*scale@+scale@-3
+	gsel 0
+	return
+
+#deffunc UnSetBox int x,int y
+	gsel 1
+	color 255,255,255
+	boxf x*scale@+2,y*scale@+2,x*scale@+scale@-3,y*scale@+scale@-3
+	gsel 0
+	return
+
+#global

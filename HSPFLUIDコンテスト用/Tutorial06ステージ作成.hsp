@@ -1,0 +1,188 @@
+//流体計算
+//ノイマン境界バージョン
+#include "HSPFLUID64.as"
+#include "hsp3util.as"
+	buffer 1:picload "back04.png"
+
+	wx = 50
+	wy = 22
+	scale = 20
+	
+	ddim vx,wx,wy//x速度
+	ddim vy,wx,wy//y速度
+	ddim p,wx,wy//圧力
+	dim wall,wx,wy//そこが壁かどうか
+
+	pnum = 3000//粒子の数
+	ddim particle_x,pnum//粒子の座標
+	ddim particle_y,pnum//粒子の座標
+	ddim speed_x,pnum//粒子の速度
+	ddim speed_y,pnum//粒子の速度
+	
+	screen 0,wx*scale,wy*scale
+	timer = 0
+	font msgothic,30
+
+*main
+	pos 0,0
+	gmode 3,0,0,23
+	gcopy 1,0,0,wx*scale,wy*scale
+	
+	FluidProcess vx,vy,p,wall//流体計算
+	
+	GetSpeedPoints vx,vy,particle_x,particle_y,speed_x,speed_y//粒子の速度計算
+
+	color 0,0,0
+	gosub*Particle_set
+		repeat pnum
+		particle_x.cnt+=speed_x.cnt
+		particle_y.cnt+=speed_y.cnt
+		if (particle_x.cnt<0):particle_x.cnt+=wx
+		if (particle_y.cnt<0):particle_y.cnt+=wy
+		if (particle_x.cnt>1.0*wx-0.5):particle_x.cnt-=wx+0.0001*rnd(10000)
+		if (particle_y.cnt>1.0*wy):particle_y.cnt-=wy
+		pset particle_x.cnt*scale,particle_y.cnt*scale
+		loop
+
+	gosub*demo
+	
+	redraw 1
+	redraw 0
+	await 16
+	timer++
+	goto*main
+
+
+*Particle_set//順繰りに初期化
+		repeat 10
+		index=(index+1)\pnum
+		particle_x.index=0.0001*rnd(10000)*wx/2
+		particle_y.index=0.0001*rnd(10000)*wy
+		loop
+	return
+
+
+*demo
+	color 255,255,255
+	grect wx*scale/2,wy*scale/2,0,wx*scale,wy*scale
+	color 0,0,0
+	textmode 2
+	color 5,255,135
+	eventid=timer/100
+	title ""+timer+""
+
+	if (eventid<4){
+		pos 10,20
+		emes "流体が流れるステージを作っていきたいと思います。"
+		return
+	}
+
+	if (eventid<8){
+		pos 10,20
+		emes "←左の壁から右に向かって流体が流れるようにしたいとします。"
+		return
+	}
+	
+	if (eventid<12){
+		pos 30,20
+		emes "←流体を生み出す必要があるのでこのラインを壁にします。\n\nwall.0.0～wall.0."+(wy-1)+"を1にして"
+		if (timer==800){
+			repeat wy
+			SetBox 0,cnt
+			loop
+		}
+		return
+	}
+
+
+	if (eventid<17){
+		pos 30,20
+		emes "辺に速度を適応させるとします。\n\nvx.1.0～vx.1."+(wy-1)+"を0.5にセット"
+			repeat wy
+			setlineX 1,cnt
+			loop
+			
+		if (timer==1200){
+			repeat wy
+			wall.0.cnt=1
+			vx.1.cnt=0.5
+			loop
+		}
+		return
+	}
+
+	if (eventid<22){
+		pos 30,20
+		emes "このままでは流体の出ていく先がないので、wall=2の吸収壁を\n　　一番右のラインに適応します。　→→→→→→→→→→→→"
+
+		if (timer==1900){
+			repeat wy
+			SetBox wx-1,cnt
+			loop
+		}
+		return
+	}
+
+	if (eventid<26){
+		pos 30,20
+		emes "適応しました"
+
+		if (timer==2200){
+			repeat wy
+			wall.(wx-1).cnt=2
+			loop
+		}
+		return
+	}
+	
+	if (eventid<30){
+		pos 30,20
+		emes "適当に障害物をおいていきます。\nこのとき障害物の辺の速度を0にしておくのを忘れずに"
+
+		if (timer\100==2){
+			xx=rnd(wx/2)+3
+			yy=rnd(wy-6)+2
+				repeat 3
+				SetBox xx,yy+cnt
+				wall.xx.(yy+cnt)=1
+				vx.xx.(yy+cnt)=0.0
+				vx.(xx+1).(yy+cnt)=0.0
+				vy.xx.(yy+cnt)=0.0
+				vy.xx.(yy+cnt+1)=0.0
+				loop
+		}
+		return
+	}
+	
+	if eventid=50:end
+	return
+
+
+#module
+
+#deffunc setlineX int x,int y
+	color 250/2,150/2,110/2
+	boxf x*scale@-3,y*scale@,x*scale@+3,y*scale@+scale@
+	return
+
+#deffunc setlineY int x,int y
+	color 110/2,110/2,250/2
+	boxf x*scale@,y*scale@-3,x*scale@+scale@,y*scale@+3
+	return
+
+
+#deffunc SetBox int x,int y
+	gsel 1
+	color 100,100,100
+	boxf x*scale@+2,y*scale@+2,x*scale@+scale@-3,y*scale@+scale@-3
+	gsel 0
+	return
+
+#deffunc UnSetBox int x,int y
+	gsel 1
+	color 255,255,255
+	boxf x*scale@+2,y*scale@+2,x*scale@+scale@-3,y*scale@+scale@-3
+	gsel 0
+	return
+
+#global
