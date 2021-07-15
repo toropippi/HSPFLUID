@@ -1,0 +1,137 @@
+#include "HSPFLUID64.as"
+	wx=64
+	wy=64
+	scale=8
+	rad=0.0
+	radspeed=0.033
+	
+	ddim vx,wx,wy
+	ddim vy,wx,wy
+	ddim p,wx,wy
+	dim wall,wx,wy
+	//壁で全体を囲う
+		repeat wx
+		wall.cnt.0=1
+		loop
+		repeat wy
+		wall.0.cnt=1
+		loop
+		
+	pnum=800//粒子の数
+	ddim particle_x,pnum//粒子の座標
+	ddim particle_y,pnum//粒子の座標
+	ddim speed_x,pnum//粒子の速度
+	ddim speed_y,pnum//粒子の速度
+	
+	screen 0,wx*scale,wy*scale
+
+		repeat -1
+		await 16
+			//4step一気に計算
+			repeat 4
+			gosub*SetLine
+			FluidProcess vx,vy,p,wall
+			gosub*Particle_Calc
+			rad+=radspeed
+			loop
+
+		//渦度描画
+			repeat wx
+			x=cnt
+			x1=(x+1)\wx
+				repeat wy
+				y=cnt
+				y1=(y+1)\wy
+				vor=-vx.x1.y1+vy.x1.y1+vx.x1.y -vy.x .y1//渦度
+				rcol=limit(vor*2256.0,0,255)
+				gcol=limit(-vor*2256.0,0,255)
+				bcol=limit(abs(vor)*1456.0-40.0,0,255)
+				color rcol,gcol,bcol
+				boxf x*scale,y*scale,x*scale+scale,y*scale+scale
+				loop
+			loop
+		
+		gosub*Particle_view
+		redraw 1
+		redraw 0
+		loop
+
+*Particle_view
+	//pset描画
+	color 255,255,255
+		repeat pnum
+		pset particle_x.cnt*scale,particle_y.cnt*scale
+		loop
+	return
+
+*Particle_Calc
+	gosub*Particle_Init
+	GetSpeedPoints vx,vy,particle_x,particle_y,speed_x,speed_y//粒子の速度計算
+		repeat pnum
+		particle_x.cnt+=speed_x.cnt
+		particle_y.cnt+=speed_y.cnt
+		loop
+	return
+
+*Particle_Init//順繰りに初期化
+		repeat 4
+		index=(index+1)\pnum
+		particle_x.index=0.0001*rnd(10000)*wx
+		particle_y.index=0.0001*rnd(10000)*wy
+		loop
+	return
+	
+//回転するラインをwallに設定しvx,vyもセット
+*SetLine
+	//壁情報リセット
+		repeat wx-1,1
+		x=cnt
+			repeat wy-1,1
+			wall.x.cnt=0
+			loop
+		loop
+		
+	linelength=wx/3 //半径
+	
+	//片側、反片側を計算
+	x=0.5*wx
+	y=0.5*wy
+	x_=0.5*wx
+	y_=0.5*wy
+	SetWallSpeed vx,vy,wall,x,y,0.5*wx,0.5*wy,radspeed
+		repeat linelength
+		//片側
+		x+=cos(rad)
+		y+=sin(rad)
+		ix=int(x)
+		iy=int(y)
+		SetWallSpeed vx,vy,wall,ix,iy,0.5*wx,0.5*wy,radspeed
+		//反対側
+		x_-=cos(rad)
+		y_-=sin(rad)
+		ix_=int(x_)
+		iy_=int(y_)
+		SetWallSpeed vx,vy,wall,ix_,iy_,0.5*wx,0.5*wy,radspeed
+		loop
+	return
+
+
+
+
+#module
+
+//指定座標を壁にし、壁の速度を回転速度に応じて計算、代入
+#deffunc SetWallSpeed array vx,array vy,array wall,int setx,int sety,double centerx,double centery,double radspeed
+	wall.setx.sety = 1
+
+	lx = (0.5+setx)-centerx
+	ly = (0.5+sety)-centery
+	lng = sqrt(lx*lx+ly*ly)
+	rad = atan(ly,lx)
+	
+	vx.setx.sety = -sin(rad)*radspeed*lng
+	vx.(setx+1).sety = -sin(rad)*radspeed*lng
+	vy.setx.sety = cos(rad)*radspeed*lng
+	vy.setx.(sety+1) = cos(rad)*radspeed*lng
+	return
+#global
